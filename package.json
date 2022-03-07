@@ -1,0 +1,38 @@
+{
+  "name": "sifbase",
+  "version": "1.0.0",
+  "description": "Simple, powerful key-value database/storage utility.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node test/tests.js",
+    "testesm": "node test/test-esm.mjs --esm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cannicide/sifbase.git"
+  },
+  "keywords": [
+    "db",
+    "keyv",
+    "evg",
+    "elisif",
+    "database",
+    "storage"
+  ],
+  "author": "Cannicide",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Cannicide/sifbase/issues"
+  },
+  "homepage": "https://github.com/Cannicide/sifbase#readme",
+  "dependencies": {
+    "keyv": "^4.1.1",
+    "keyv-file": "^0.2.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/wrapper.mjs",
+      "require": "./src/index.js"
+    }
+  }
+}
