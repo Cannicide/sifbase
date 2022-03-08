@@ -120,6 +120,8 @@ module.exports.Sifbase = class Sifbase {
      * Utility to get the directory filepath of the file this method is called in.
      * Alternative to CJS' __dirname, for ESM modules.
      * 
+     * Should work for all operating systems. Tested only in Windows and Ubuntu.
+     * 
      * @example
      * const dir = Sifbase.__dirname(import.meta);
      * 
@@ -127,7 +129,9 @@ module.exports.Sifbase = class Sifbase {
      * @returns {String} Directory filepath.
      */
     static __dirname(i) {
-        return i.url.substring(0, i.url.lastIndexOf("/")).split("C:").slice(1).join("C:").replace(/%20/g, " ");
+        const path = i.url.substring(7, i.url.lastIndexOf("/")).replace(/%20/g, " ");
+        if (path.startsWith("/C:")) return path.split("C:").slice(1).join("C:");
+        return path;
     }
 
     /**
