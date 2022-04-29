@@ -23,11 +23,11 @@ Initialize your database:
 const db = new Sifbase(__dirname + "/path/to/file.json");
 
 //ESM:
-const db = new Sifbase(Sifbase.__dirname(import.meta) + "/path/to/file.json");
+const db = new Sifbase(Sifbase.dirname + "/path/to/file.json");
 ```
 Sifbase supports any database scheme supported by underlying dependency `Keyv`. This includes mongodb, sqlite, and many other databases, as well as basic JSON files (and a custom JSON-like file format called SIFDB).
 
-Note that initialization in ESM is slightly different from CJS, as `__dirname` is only defined in CJS. Sifbase includes a simple utility, `Sifbase.__dirname(importMeta)` (always accepts `import.meta` as argument), that can be used as an alternative to `__dirname` in ESM. Apart from importing and initialization, all other aspects of this module should be the same in CJS and ESM.
+Note that initialization in ESM is slightly different from CJS, as `__dirname` is only defined in CJS. Sifbase includes a simple utility, `Sifbase.dirname`, that can be used as an alternative to `__dirname` in ESM. Apart from importing and initialization, all other aspects of this module should be the same in CJS and ESM.
 
 Set a value:
 ```js
@@ -154,7 +154,7 @@ SIFDB.import(__dirname + "/path/to/file.sifdb"); // Returns parsed JSON of Sifdb
 
 `SIFDB` instance:
 ```js
-// Consruct an empty Sifdb structure:
+// Construct an empty Sifdb structure:
 const sifdb = new SIFDB();
 
 // Or construct a Sifdb structure from a sifdb file:
@@ -178,3 +178,66 @@ new SifStore(__dirname + "/path/to/file.sifdb");
 
 new SifStore(__dirname + "/path/to/file.json");
 ```
+
+Setting a time limit on database entries:
+```js
+const db = new Sifbase(__dirname + "/path/to/file.json");
+await db.set("key", "expires in 5 seconds (5000 milliseconds)", 5000);
+```
+
+New iterator features (note -- not all databases support iterators):
+```js
+// Note: All synchronous iterators use cached entries, and may not exactly match database entries
+
+// Asynchronously iterate entries:
+for await (const [key, value] of db) {
+    console.log("Key:", key);
+    console.log("Value:", value);
+}
+
+// Or use .iterator() to asynchronously iterate:
+for await (const [key, value] of db.iterator()) {
+    console.log("Key:", key);
+    console.log("Value:", value);
+}
+
+// Synchronously iterate cached entries:
+for (const [key, value] of db) {
+    console.log("Key:", key);
+    console.log("Value:", value);
+}
+
+// Asynchronously iterate keys with .keys():
+for (const key of await db.keys()) {
+    console.log("Key:", key);
+}
+
+// Asynchronously iterate values with .values():
+for (const value of await db.values()) {
+    console.log("Value:", value);
+}
+
+// Synchronously iterate cached keys:
+for (const key of db.cache.keys()) {
+    console.log("Key:", key);
+}
+
+// Synchronously iterate cached values:
+for (const value of await db.cache.values()) {
+    console.log("Value:", value);
+}
+```
+
+## Changelogs
+- **v1.0.0**
+    - Created and published sifbase package
+    - Added Sifbase, SIFDB, SifStore, ArrayManager
+    - Added Sifbase synchronous cache
+    - Added all base methods and properties
+- **v1.0.1**
+    - Updated dependency: Keyv
+    - Added expiration time limits to Sifbase#set()
+    - Fixed namespaced table synchronization issues by creating namespaced table cache
+    - Added asynchronous and synchronous entry, key, and value iterators to Sifbase
+    - Added entry iterator to SifStore
+    - Deprecated Sifbase.__dirname(), in favor of powerful new Sifbase.dirname utility

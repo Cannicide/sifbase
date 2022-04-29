@@ -62,6 +62,14 @@ module.exports.Sifbase = class Sifbase {
     #keyv;
 
     /**
+     * Used internally to cache database tables that have been accessed by a namespace.
+     * By caching namespaced tables, a new namespace is only created the first time it is accessed.
+     * This cache is necessary to avoid collisions between table calls, since Sifbase#table() is synchronous.
+     * @private
+     */
+    static NAMESPACED_TABLES = new Map();
+
+    /**
      * Synchronously get database values, based on cached values.
      * Key-value pairs are cached whenever they are asynchronously retrieved or set.
      * 
@@ -89,17 +97,29 @@ module.exports.Sifbase = class Sifbase {
     constructor(path, namespace, keyv) {
         this.#path = path;
         this.#namespace = namespace;
-        const opts = { namespace: this.#namespace };
-        let isSifStore = this.#path;
 
-        if (Sifbase.isJsonStore(this.#path) || Sifbase.isSifStore(this.#path)) {
-            opts.store = new SifStore(this.#path);
-            isSifStore = false;
+        if (this.#path && Sifbase.NAMESPACED_TABLES.has(this.#path) && Sifbase.NAMESPACED_TABLES.get(this.#path).has(this.#namespace)) {
+            const namespacedTable = Sifbase.NAMESPACED_TABLES.get(this.#path).get(this.#namespace);
+            this.#keyv = namespacedTable;
         }
+        else {
+            const opts = { namespace: this.#namespace };
+            let isSifStore = this.#path;
 
-        const keyvArgs = isSifStore ? [this.#path, opts] : [opts];
-        this.#keyv = keyv ?? new Keyv(...keyvArgs);
-        this.#keyv.on('error', err => console.error('Sifbase Connection Error', err));
+            if (Sifbase.isJsonStore(this.#path) || Sifbase.isSifStore(this.#path)) {
+                opts.store = new SifStore(this.#path, this.#namespace);
+                isSifStore = false;
+            }
+
+            const keyvArgs = isSifStore ? [this.#path, opts] : [opts];
+            this.#keyv = keyv ?? new Keyv(...keyvArgs);
+            this.#keyv.on('error', err => console.error('Sifbase Connection Error', err));
+
+            if (this.#path) {
+                if (!Sifbase.NAMESPACED_TABLES.has(this.#path)) Sifbase.NAMESPACED_TABLES.set(this.#path, new Map());
+                Sifbase.NAMESPACED_TABLES.get(this.#path).set(this.#namespace, this.#keyv);
+            }
+        }
 
         return new Proxy(this, {
             get(target, prop, receiver) {
@@ -127,11 +147,36 @@ module.exports.Sifbase = class Sifbase {
      * 
      * @param {import.meta} i - The 'import.meta' keyword.
      * @returns {String} Directory filepath.
+     * @deprecated Use Sifbase.dirname instead. Use this method only if that method doesn't work.
      */
     static __dirname(i) {
         const path = i.url.substring(7, i.url.lastIndexOf("/")).replace(/%20/g, " ");
         if (path.startsWith("/C:")) return path.split("C:").slice(1).join("C:");
         return path;
+    }
+
+    /**
+     * Utility to dynamically get the directory filepath of the file this property is used in.
+     * Alternative to CJS' __dirname, for ESM and CJS modules.
+     * An evolved version of Sifbase.__dirname(), not requiring the use of `import.meta` or a method call.
+     * 
+     * Should work for all operating systems. Tested only in Windows and Ubuntu.
+     * 
+     * @example
+     * const dir = Sifbase.dirname;
+     * 
+     * @returns {String} Directory filepath.
+     */
+    static get dirname() {
+        const platform = process.platform;
+        const rawPath = new Error().stack.split("\n")[2].trim().split("(").slice(1).join("(").split(":").slice(0, -2).join(":").replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+        let encodedPath = rawPath;
+
+        if (platform === "win32") {
+            encodedPath = rawPath.split("C:").slice(1).join("C:");
+        }
+
+        return decodeURIComponent(encodedPath);
     }
 
     /**
@@ -223,10 +268,11 @@ module.exports.Sifbase = class Sifbase {
      * Asynchronously sets a value in the database.
      * @param {String} key 
      * @param {*} value 
+     * @param {Number} [expirationTime] - The optional number of milliseconds until the entry expires and is removed from the database.
      */
-    async set(key, value) {
+    async set(key, value, expirationTime) {
         this.cache.set(key, value);
-        return await this.#keyv.set(key, value);
+        return await this.#keyv.set(key, value, expirationTime);
     }
 
     /**
@@ -303,6 +349,37 @@ module.exports.Sifbase = class Sifbase {
         if (typeof filepath !== "string" || !fs.existsSync(filepath)) return this;
         const json = module.exports.SIFDB.import(filepath);
         return this.importJSON(json, deleteAfterImport);
+    }
+
+    // Iterators:
+
+    iterator() {
+        if (!this.#keyv.iterator) {
+            console.warn("Warning: This database type does not support iterators.");
+            return [];
+        }
+
+        return this.#keyv.iterator();
+    }
+
+    async *[Symbol.asyncIterator]() {
+        for await (const [k,v] of this.iterator()) yield [k,v];
+    }
+
+    *[Symbol.iterator]() {
+        for (const [k,v] of this.cache.entries()) yield [k,v];
+    }
+
+    async keys() {
+        const keys = [];
+        for await (const [key] of this.iterator()) keys.push(key);
+        return keys;
+    }
+
+    async values() {
+        const values = [];
+        for await (const [_, value] of this.iterator()) values.push(value);
+        return values;
     }
 
 }

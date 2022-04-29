@@ -68,7 +68,39 @@ async function arrayTester() {
 
 }
 
+async function testMultipleTableReference() {
+    // await sifdb.clear();
+
+    const table = sifdb;
+
+    console.log("Value before:", await table.get("akey"));
+    await table.set("akey", ["a large array", 1 , 2 , 3, 4, 5, 6, 7, 8], 6000);
+    await table.set("tronch", ["some other array", 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    console.log("Value after:", await table.get("akey"));
+
+    const table2 = new Sifbase(__dirname + "/storage/db2.sifdb");
+    setTimeout(async () => console.log("Value even after:", await table2.get("akey")), 5000);
+    setTimeout(async () => console.log("Value even more after:", await table2.get("akey")), 16000);
+}
+
+async function testIterators() {
+
+    await sifdb.clear();
+
+    const table = sifdb.table("test");
+    await table.set("key1", "value1");
+    await table.set("key2", "value2");
+    await table.set("key3", "value3");
+
+    for await (const [key, value] of table) {
+        console.log("Async Key:", key, "Async Value:", value);
+    }
+
+}
+
 // tester();
 // sifdbTester();
 // namespaceTester();
 // arrayTester();
+// testMultipleTableReference();
+// testIterators();
