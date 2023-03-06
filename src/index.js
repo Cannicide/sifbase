@@ -138,16 +138,16 @@ module.exports.Sifbase = class Sifbase {
 
     /**
      * Utility to get the directory filepath of the file this method is called in.
-     * Alternative to CJS' __dirname, for ESM modules.
+     * Alternative to CJS' __dirname, for ESM modules only.
      * 
      * Should work for all operating systems. Tested only in Windows and Ubuntu.
      * 
      * @example
      * const dir = Sifbase.__dirname(import.meta);
      * 
-     * @param {import.meta} i - The 'import.meta' keyword.
+     * @param {import.meta} i - The `import.meta` keyword.
      * @returns {String} Directory filepath.
-     * @deprecated Use Sifbase.dirname instead. Use this method only if that method doesn't work.
+     * @deprecated Use `Sifbase.dirname` instead. Use this method in ESM only if `Sifbase.dirname` doesn't work.
      */
     static __dirname(i) {
         const path = i.url.substring(7, i.url.lastIndexOf("/")).replace(/%20/g, " ");
@@ -227,8 +227,8 @@ module.exports.Sifbase = class Sifbase {
      * 
      * @param {Number} [ms] - Milliseconds to wait. By default, this is the optimal time to wait for JSON/SIFDB database operations.
      */
-    static async await(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms ?? 200));
+    static async await(ms = 200) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
@@ -353,6 +353,9 @@ module.exports.Sifbase = class Sifbase {
 
     // Iterators:
 
+    /**
+     * An asynchronous iterator.
+     */
     iterator() {
         if (!this.#keyv.iterator) {
             console.warn("Warning: This database type does not support iterators.");
@@ -370,12 +373,20 @@ module.exports.Sifbase = class Sifbase {
         for (const [k,v] of this.cache.entries()) yield [k,v];
     }
 
+    /**
+     * Asynchronusly returns the keys of this database or table.
+     * @returns {Array}
+     */
     async keys() {
         const keys = [];
         for await (const [key] of this.iterator()) keys.push(key);
         return keys;
     }
 
+    /**
+     * Asynchronously returns the values of this database or table.
+     * @returns {Array}
+     */
     async values() {
         const values = [];
         for await (const [_, value] of this.iterator()) values.push(value);

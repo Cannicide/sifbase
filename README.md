@@ -91,7 +91,7 @@ Importing the contents of external JSON or SIFDB files into your database:
 await db.importJSON(__dirname + "/path/to/file.json");
 await db.importSIFDB(__dirname + "/path/to/file.sifdb")
 
-// Use Sifbase.__dirname(import.meta) instead of __dirname in ESM modules
+// Use Sifbase.dirname instead of __dirname in ESM modules
 ```
 
 Working with databases or database tables that are entirely arrays:
@@ -235,9 +235,23 @@ for (const value of await db.cache.values()) {
     - Added Sifbase synchronous cache
     - Added all base methods and properties
 - **v1.0.1**
-    - Updated dependency: Keyv
+    - Updated dependency Keyv to latest as of May 2022
     - Added expiration time limits to Sifbase#set()
     - Fixed namespaced table synchronization issues by creating namespaced table cache
     - Added asynchronous and synchronous entry, key, and value iterators to Sifbase
     - Added entry iterator to SifStore
     - Deprecated Sifbase.__dirname(), in favor of powerful new Sifbase.dirname utility
+- **v1.0.2**
+    - Updated dependency Keyv to latest as of 3/6/2023
+    - General improvements and bug fixes
+    - Updated some documentation to be more specific and accurate
+    - Many improvements to ArrayManager
+        - Improved efficiency of ArrayManager#lastIndex
+        - Improved efficiency of ArrayManager#toRawArray() and made it synchronous by default
+        - Added ArrayManager#at() for easier access to end elements, and for increased similarity to Array
+        - Added ArrayManager#includes() for easier item presence checks
+        - Added ArrayManager#join() for easier manipulation into strings
+        - Added ArrayManager#toSet() for easy conversion into Sets
+        - Added ArrayManager#keys() and ArrayManager#values() for more consistency with Array
+        - Added synchronous and asynchronous iterators for easier iteration
+    - Backwards compatability with v1.0.1 naming and syntax *fully maintained*, v1.0.1 code works without any changes necessary on v1.0.2

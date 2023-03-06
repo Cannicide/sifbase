@@ -1,1 +1,1 @@
-{"cache":[["undefined:testkey",{"value":"{\"value\":\"testvalue\",\"expires\":null}"}],["undefined:test",{"value":"{\"value\":\"a 2nd value\",\"expires\":null}"}]],"lastExpire":1646607699964}
+{"cache":[["undefined:testkey",{"value":"{\"value\":\"testvalue\",\"expires\":null}"}],["undefined:test",{"value":"{\"value\":\"a 2nd value\",\"expires\":null}"}],["namespace1:test",{"value":"{\"value\":\"a 4th value\",\"expires\":null}"}]],"lastExpire":1678088157835}

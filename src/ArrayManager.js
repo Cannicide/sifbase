@@ -1,8 +1,15 @@
 
+const utils = {
+    async toRawArray(arrayManager) {
+        return await arrayManager.filter(() => true);
+    }
+}
+
 module.exports = class ArrayManager {
 
     indexes;
     #sifbase;
+    #rawArray;
 
     /**
      * @param {Number[]} indexes - An array of indexes.
@@ -12,6 +19,8 @@ module.exports = class ArrayManager {
         
         this.indexes = new Set(indexes);
         this.#sifbase = sifbase;
+
+        (async () => this.#rawArray = await utils.toRawArray(this))();
 
         return new Proxy(this, {
             get(target, prop, receiver) {
@@ -28,8 +37,6 @@ module.exports = class ArrayManager {
                 if (!(prop in target) && !isNaN(prop) && !prop.match("#")) return target.set(prop, value);
                 if (prop == "indexes") Reflect.set(target, prop, value, receiver);
                 throw new Error("Cannot modify base property " + prop + " on Sifbase.ArrayManager object.");
-                // const setter = Reflect.set(target, prop, value, receiver);
-                // return typeof setter === "function" ? setter.bind(target) : setter;
             }
         });
 
@@ -66,7 +73,7 @@ module.exports = class ArrayManager {
      * The last index in the array.
      */
     get lastIndex() {
-        return [...this.indexes.values()].slice(-1)[0] ?? -1;
+        return [...this.indexes.values()].at(-1) ?? -1;
     }
 
     /**
@@ -87,6 +94,7 @@ module.exports = class ArrayManager {
         if (isNaN(index)) throw new Error("Index must be a number.");
         const key = await this.has(index);
         if (!key) return undefined;
+
         return this.#sifbase.get(index, defaultValue);
     }
 
@@ -103,6 +111,9 @@ module.exports = class ArrayManager {
             this.indexes = new Set([...this.indexes.values()].sort((a, b) => a - b));
             await this.#sifbase.set("indexes", [...this.indexes.values()]);
         }
+
+        (async () => this.#rawArray = await utils.toRawArray(this))();
+
         return this.#sifbase.set(index, value);
     }
 
@@ -223,11 +234,34 @@ module.exports = class ArrayManager {
     }
 
     /**
-     * Returns a raw array derived from the contents of this ArrayManager.
+     * Returns a raw array derived from a cache of the contents of this ArrayManager.
+     * The cached contents are updated on initialization and modification of database contents via set() and other ArrayManager methods.
+     * 
+     * @example
+     * const myArray = arr.toRawArray();
+     * 
+     * // OR
+     * 
+     * const myArray = await arr.toRawArray(true); // must be async when forced=true
+     * 
+     * @param {boolean} [forced] - Optionally skip the cache and directly retrieve raw array contents asynchronously as a Promise<Array>.
      * @returns {Array}
      */
-    async toRawArray() {
-        return this.filter(() => true);
+    toRawArray(forced = false) {
+        if (forced) {
+            (async () => this.#rawArray = await utils.toRawArray(this))();
+            return utils.toRawArray(this);
+        }
+        return this.#rawArray;
+    }
+
+    /**
+     * Asynchronously returns a Set, an iterable similar to Arrays that only contains unique values, derived from the contents of this ArrayManager.
+     * 
+     * @returns {Set}
+     */
+    async toSet() {
+        return new Set(await this.toRawArray(true));
     }
 
     /**
@@ -293,7 +327,33 @@ module.exports = class ArrayManager {
      * @returns {Array}
      */
     async reverse() {
-        return (await this.toRawArray()).reverse();
+        return (await this.toRawArray(true)).reverse();
+    }
+
+    /**
+     * Like get(), but negative indexes can be provided that count back from the last element in the array.
+     * @param {Number} index
+     */
+    async at(index) {
+        return (await this.toRawArray(true)).at(index);
+    }
+
+    /**
+     * Asynchronously checks if the array contains the given item.
+     * @param {*} item 
+     * @returns {boolean}
+     */
+    async includes(item) {
+        return (await this.toRawArray(true)).includes(item);
+    }
+
+    /**
+     * Asynchronously joins an array into a single string separated by the provided separator.
+     * @param {String} [separator]
+     * @returns {String}
+     */
+    async join(separator) {
+        return (await this.toRawArray(true)).join(separator);
     }
 
     /**
@@ -301,6 +361,31 @@ module.exports = class ArrayManager {
      */
     get length() {
         return this.indexes.size;
+    }
+
+    async *[Symbol.asyncIterator]() {
+        for await (const [_k,v] of this.#sifbase.iterator()) yield v;
+    }
+
+    *[Symbol.iterator]() {
+        for (const [_k,v] of this.toRawArray()) yield v;
+    }
+
+    /**
+     * Asynchronously returns the numeric indexes of the array.
+     * @returns {Array}
+     */
+    async keys() {
+        return [...this.indexes.values()];
+    }
+
+    /**
+     * Asynchronously returns the values of the array.
+     * Functionally the same as `toRawArray(true)`.
+     * @returns {Array}
+     */
+    async values() {
+        return this.toRawArray(true);
     }
 
 }
